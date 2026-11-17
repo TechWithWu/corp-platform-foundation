@@ -1,74 +1,60 @@
-name: GAC Terraform Unit Tests
+name: 'Terraform Unit Tests'
 
 on:
   push:
-    branches: [main, dev]
+    branches:
+      - main
+      - dev
   pull_request:
-    branches: [main, dev]
+    branches:
+      - main
+      - dev
 
 permissions:
+  id-token: write
   contents: read
   security-events: write
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   terraform-unit-tests:
-    name: Terraform Unit Tests
+    name: 'Terraform Unit Tests'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: infraascode
-        shell: bash
-
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.17.0"
-          terraform_wrapper: false
+    # Install Terraform CLI
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
 
-      - name: Verify lock file
-        run: git ls-files --error-unmatch .terraform.lock.hcl && sha256sum .terraform.lock.hcl
+    # Validate code format
+    - name: Terraform Format Check
+      run: terraform fmt -check
+      working-directory: githubascode
 
-      - name: Terraform diagnostics
-        run: terraform version && sed -n '/azure\/alz/,/^}/p;/azure\/modtm/,/^}/p;/azure\/azapi/,/^}/p' .terraform.lock.hcl
+    # Initialize Terraform (only perform format and syntax static checks when backend=false)
+    - name: Terraform Init
+      run: terraform init -backend=false
+      working-directory: githubascode
 
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive .
+    # Validate Terraform code logic and structure
+    - name: Terraform Validate
+      run: terraform validate
+      working-directory: githubascode
 
-      - name: Terraform Init
-        env:
-          TF_PLUGIN_CACHE_DIR: ""
-        run: terraform init -backend=false -lockfile=readonly -no-color
+    # Use Checkov to scan Terraform code for security issues
+    - name: Run Checkov action
+      id: checkov
+      uses: bridgecrewio/checkov-action@master
+      with: 
+        framework: terraform
+        directory: githubascode # scan the githubascode directory
 
-      - name: Terraform Validate
-        run: terraform validate -no-color
-
-      - name: Run Checkov
-        id: checkov
-        uses: bridgecrewio/checkov-action@master
-        continue-on-error: true
-        with:
-          framework: terraform
-          directory: infraascode
-          output_format: cli,sarif
-          output_file_path: console,results.sarif
-          quiet: true
-
-      - name: Upload Checkov SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results.sarif
-          category: checkov-terraform
-
-      - name: Checkov result
-        if: always()
-        run: echo "Checkov audit outcome: ${{ steps.checkov.outcome }}"
+    # Upload SARIF report to GitHub Advanced Security
+    - name: Upload SARIF file
+      if: success() || failure()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: results.sarif
+        category: checkov
