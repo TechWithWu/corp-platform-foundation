@@ -1,4 +1,4 @@
-name: Terraform Unit Tests
+name: GAC Terraform Unit Tests
 
 on:
   push:
@@ -19,7 +19,6 @@ jobs:
     name: Terraform Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     defaults:
       run:
         working-directory: infraascode
@@ -29,42 +28,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ⚠️ 改成你本地 `terraform version` 的准确版本。
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.17.0"
           terraform_wrapper: false
-          # 没有 cache 输入，不能写。
 
-      - name: Verify dependency lock file
-        run: |
-          set -euo pipefail
-          git ls-files --error-unmatch .terraform.lock.hcl
-          sha256sum .terraform.lock.hcl
-          echo "Lock SHA-256: $(sha256sum .terraform.lock.hcl | awk '{print $1}')"
+      - name: Verify lock file
+        run: git ls-files --error-unmatch .terraform.lock.hcl && sha256sum .terraform.lock.hcl
 
-      # 打印三个失败 Provider 的 hashes，判断是“缺 zh”还是“mirror 包不一致”。
-      - name: Provider lock diagnostics
-        run: |
-          set -euo pipefail
-          terraform version
-          for p in azure/alz azure/modtm azure/azapi; do
-            echo "================ $p ================"
-            sed -n "/registry.terraform.io\/${p}\"/,/^}/p" .terraform.lock.hcl
-          done
-          echo "================ CLI config ================"
-          for f in "${TF_CLI_CONFIG_FILE:-}" "$HOME/.terraformrc" "$HOME/.terraform.d/terraform.rc"; do
-            [ -n "${f:-}" ] && [ -f "$f" ] && { echo "--- $f"; cat "$f"; }
-          done
-          echo "================ env ================"
-          env | grep -E '^(TF_|TERRAFORM_CLI_RC|VARS_)' | sort -u || echo '(none)'
+      - name: Terraform diagnostics
+        run: terraform version && sed -n '/azure\/alz/,/^}/p;/azure\/modtm/,/^}/p;/azure\/azapi/,/^}/p' .terraform.lock.hcl
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive .
 
-      # readonly 仍会校验 checksum，只是禁止修改 lock。
-      # 清空 plugin cache，避免复用本地缓存解包目录；不是靠 setup-terraform 的 cache 参数。
       - name: Terraform Init
         env:
           TF_PLUGIN_CACHE_DIR: ""
@@ -76,21 +54,21 @@ jobs:
       - name: Run Checkov
         id: checkov
         uses: bridgecrewio/checkov-action@master
+        continue-on-error: true
         with:
           framework: terraform
           directory: infraascode
           output_format: cli,sarif
           output_file_path: console,results.sarif
           quiet: true
-        continue-on-error: true
 
       - name: Upload Checkov SARIF
-        if: ${{ always() && hashFiles('results.sarif') != '' }}
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
           category: checkov-terraform
 
-      - name: Report Checkov outcome
-        if: ${{ always() }}
+      - name: Checkov result
+        if: always()
         run: echo "Checkov audit outcome: ${{ steps.checkov.outcome }}"
