@@ -9,17 +9,16 @@ on:
       - main
   workflow_dispatch:
 
-
 # Ensure only one Terraform execution runs at a time per ref; never cancel running jobs mid-state!
 concurrency:
   group: gac-terraform-${{ github.ref }}
   cancel-in-progress: false
 
+# Grant necessary permissions for the built-in temporary GITHUB_TOKEN
 permissions:
-  id-token: write        # Required for Azure OIDC login and Azure Blob Storage state backend access
-  contents: read         # Required to check out repository code
-  pull-requests: write   # Required to post plan output to PR comments
-  issues: write          # Required for GitHub Script REST API commenting
+  contents: read
+  pull-requests: write
+  issues: write
 
 env:
   TF_ENV: prod 
@@ -35,14 +34,6 @@ jobs:
     steps:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
-
-      - name: 'Generate GitHub App Token'
-        id: generate-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.CORP_PLATFORM_GITHUB_APP_ID }}
-          private-key: ${{ secrets.CORP_PLATFORM_GITHUB_APP_SECRET }}
-          owner: ${{ github.repository_owner }}
 
       - name: 'Setup Terraform CLI'
         uses: hashicorp/setup-terraform@v3
@@ -68,7 +59,7 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_OWNER: ${{ github.repository_owner }}
           TF_IN_AUTOMATION: 'true'
         run: terraform init -backend-config="env/${{ env.TF_ENV }}/backend.hcl"
@@ -79,7 +70,7 @@ jobs:
       - name: 'Terraform Plan'
         id: plan
         env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_OWNER: ${{ github.repository_owner }}
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -116,11 +107,8 @@ jobs:
       - name: 'Push Plan Output to Pull Request'
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
-        env:
-          SUMMARY: ${{ steps.plan-summary.outputs.summary }}
-          APP_TOKEN: ${{ steps.generate-token.outputs.token }}
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const body = process.env.SUMMARY;
             await github.rest.issues.createComment({
@@ -153,14 +141,6 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
 
-      - name: 'Generate GitHub App Token'
-        id: generate-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.CORP_PLATFORM_GITHUB_APP_ID }}
-          private-key: ${{ secrets.CORP_PLATFORM_GITHUB_APP_SECRET }}
-          owner: ${{ github.repository_owner }}
-
       - name: 'Setup Terraform CLI'
         uses: hashicorp/setup-terraform@v3
         with:
@@ -186,7 +166,7 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_OWNER: ${{ github.repository_owner }}
           TF_IN_AUTOMATION: 'true'
         run: terraform init -backend-config="env/${{ env.TF_ENV }}/backend.hcl"
@@ -194,7 +174,7 @@ jobs:
       - name: 'Terraform Apply Approved Plan'
         id: apply
         env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_OWNER: ${{ github.repository_owner }}
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
