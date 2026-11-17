@@ -1,4 +1,4 @@
-name: 'Create Terraform State Storage Account'
+name: 'Provision Terraform State Storage Account'
 
 on:
   workflow_dispatch:
