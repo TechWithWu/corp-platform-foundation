@@ -14,11 +14,12 @@ concurrency:
   group: gac-terraform-${{ github.ref }}
   cancel-in-progress: false
 
-# Grant necessary permissions for the built-in temporary GITHUB_TOKEN
+# Grant necessary permissions for the built-in temporary GITHUB_TOKEN & Azure OIDC
 permissions:
   contents: read
   pull-requests: write
   issues: write
+  id-token: write
 
 env:
   TF_ENV: prod 
