@@ -31,6 +31,12 @@ variable "enable_telemetry" {
   default     = false
 }
 
+variable corp_platform_root_group_name {
+  type        = string
+  description = "The Root subscription of the management group"
+}
+
+
 variable "subscription_placement_destroy_behavior" {
   description = <<DESC
 Controls where the subscription is moved when the ALZ subscription

@@ -1,4 +1,9 @@
 
+data "azapi_resource" "corp_platform_root_group" {
+  type      = "Microsoft.Management/managementGroups@2023-04-01"
+  parent_id = "/"
+  name      = var.corp_platform_root_group_name
+}
 
 ###############################################################################
 # Intermediate Root Management Group
@@ -16,7 +21,7 @@ resource "azapi_resource" "intermediate_root_mg" {
       displayName = "${upper(local.organization)} ${upper(var.environment)} Root"
       details = {
         parent = {
-          id = "/providers/Microsoft.Management/managementGroups/${data.azapi_client_config.current.tenant_id}"
+          id = data.azapi_resource.corp_platform_root_group.id
         }
       }
     }
