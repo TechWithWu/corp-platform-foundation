@@ -36,11 +36,8 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
 
-      - name: 'Setup Terraform CLI'
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.0
-          terraform_wrapper: false
 
       - name: 'Azure CLI Login (OIDC Passwordless)'
         uses: azure/login@v2
@@ -142,11 +139,8 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
 
-      - name: 'Setup Terraform CLI'
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.0
-          terraform_wrapper: false
 
       - name: 'Azure CLI Login (OIDC Passwordless)'
         uses: azure/login@v2
