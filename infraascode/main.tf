@@ -144,8 +144,4 @@ module "alz_architecture" {
     default_message = "This resource {enforcementMode} be compliant with the assigned policy."
     merge_mode      = "replace"
   }
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
