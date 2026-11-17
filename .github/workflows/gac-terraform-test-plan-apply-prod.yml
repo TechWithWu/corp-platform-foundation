@@ -97,11 +97,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const body = `### 🚀 GitHub-as-Code Terraform Plan Output
-
-> **Branch**: \`${context.payload.pull_request.head.ref}\` | **Commit**: \`${context.sha}\`
-
-Terraform plan completed successfully! Please check the **GitHub Actions Job Summary** and workflow artifacts in this PR for the complete plan details.`;
+            const branch = context.payload.pull_request.head.ref;
+            const commit = context.sha;
+            const body = "### 🚀 GitHub-as-Code Terraform Plan Output\n\n" +
+                         `> **Branch**: \`${branch}\` | **Commit**: \`${commit}\`\n\n` +
+                         "Terraform plan completed successfully! Please check the **GitHub Actions Job Summary** and workflow artifacts in this PR for the complete plan details.";
 
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
