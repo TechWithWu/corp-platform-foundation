@@ -96,7 +96,8 @@ module "alz_architecture" {
   }
 
   policy_assignments_to_modify = {
-    corp-platform-root-group = {
+    # Azure Landing Zones
+    alz = {
       policy_assignments = {
         Enable-DDoS-VNET = {
           parameters = {
