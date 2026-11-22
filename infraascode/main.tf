@@ -94,4 +94,22 @@ module "alz_architecture" {
     default_message = "This resource {enforcementMode} be compliant with the assigned policy."
     merge_mode      = "replace"
   }
+
+  policy_assignments_to_modify = {
+    corp-platform-root-group = {
+      policy_assignments = {
+        Enable-DDoS-VNET = {
+          parameters = {
+            effect = jsonencode({ value = "Disabled" })
+          }
+        }
+        # Optional: include this if Deploy-DDoSProtection is also assigned on connectivity
+        # Deploy-DDoSProtection = {
+        #   parameters = {
+        #     effect = jsonencode({ value = "Disabled" })
+        #   }
+        # }
+      }
+    }
+  }
 }
